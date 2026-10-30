@@ -1,0 +1,68 @@
+# Citadels 规则核对记录
+
+核对日期：2026-10-29。照片对应 Z-Man 2021 修订版（27角色、84建筑、22金币），不是 Citadels Classic，也不是新出的 Citadels Duel。
+
+## 原始资料
+
+- [出版商产品页](https://www.zmangames.com/game/citadels/)
+- [2021 官方英文手册](https://cdn.svc.asmodee.net/production-zman/uploads/2024/10/zc01-rulebook_web.pdf)：页2推荐配置；页3–4基本流程；页6结束计分；页7双人/三人；页8自定义；页10–14角色；页15建筑澄清；页16选角弃牌表。
+- [社区逐卡表](https://www.sob-zine.org/PlayerAids/Citadels_player_aid.html)：仅用于手册没有完整列出的卡面能力，尚未与用户实体卡逐张比对。
+- [BGG 2016版组件清单](https://boardgamegeek.com/boardgame/205398/citadels)：普通建筑副本数；与官方四类合计一致。
+- [社区卡牌数据笔记](https://hackmd.io/@Pattrik/board-games)：普通建筑费用交叉核对。
+
+## 重点流程索引
+
+A 为本轮王冠起始玩家，B/C 按座次。箭头后的数字是可选牌数；K=保留1张，D=自主暗弃1张，R=随机暗弃1张。
+
+| 人数 | 精确选角序列 | 完城 |
+|---|---|---|
+| 2 | 8→R→A(7):K→B(6):K+D→A(4):K+D→B(2):K+D | 8建筑 |
+| 3 | 9→R→A(8):K→B(7):K→C(6):K→R→A(4):K→B(3):K→C(2):K+D | 8建筑 |
+
+三人必须使用9号，建议 Artist；Queen 不适用于少于5人。两角色共享城市、手牌、金币，但各自重置回合额度。完成城市后等整轮结束。
+
+4–7人使用8角色时，公开弃牌数分别为2/1/0/0，暗弃1；7人末位取回最初暗弃牌二选一。8人使用9角色，末位同理。公开弃牌不能是4号。
+
+能力默认可在本角色回合任意时点各一次；税收可放建造后。商人+1金和绿色税收独立。建筑师+2牌与建造上限3独立。主教城市保护持续本轮，被刺杀失效。刺杀不公开受害身份；被杀国王在轮末公开并拿皇冠。盗贼在目标公开、采集前抢全部金币。军阀不能拆完成城市，可拆自己，拆牌入牌库底。金币和手牌无限。
+
+## 计分核对
+
+建筑费用总和 + 五色3分 + 首位完城4分/其他完城2分 + 独特建筑效果。平分按最后一轮公开过的最高角色编号比较。被杀国王在轮末公开，因此将其4号纳入比较是依文字作出的推断，手册未单列该边界案例。未公开的被杀角色不纳入。
+
+## 推荐14张独特建筑
+
+名单由官方手册确认；费用和未在手册展开的能力来自社区逐卡表，待实体卡面核验。以下使用自己的简写，不替代正式卡面。
+
+| 英文名 | 费用 | 实现摘要 |
+|---|---:|---|
+| Dragon Gate | 6 | 终局+2 |
+| Factory | 5 | 其他紫建筑建造支付-1 |
+| Haunted Quarter | 2 | 终局替换为一种任选颜色 |
+| Imperial Treasury | 5 | 终局剩余每金+1 |
+| Keep | 3 | 8号不能作用于此建筑 |
+| Laboratory | 5 | 每回合弃1手牌换2金 |
+| Library | 6 | 采集选抽牌时全保留 |
+| Map Room | 5 | 终局每张手牌+1 |
+| Quarry | 5 | 允许建同名建筑 |
+| School of Magic | 6 | 角色颜色收入时任选颜色 |
+| Smithy | 5 | 每回合付2金取3牌 |
+| Statue | 3 | 终局持皇冠+5 |
+| Thieves’ Den | 6 | 建造每张弃手牌抵1金 |
+| Wishing Well | 5 | 终局每紫建筑+1，包含自己 |
+
+易混旧版规则：Laboratory 为2金；Wishing Well 包含自身；Quarry 不限同名副本数（官方页15）；Haunted Quarter 的2021表述没有末轮建造失效限制。School of Magic 的变色仅用于角色收入，终局仍为紫色。Haunted Quarter 改为另一色后不再同时算紫色。
+
+## 普通建筑数据
+
+下面为英文名称：费用×张数，共54张。费用为社区数据，数量为BGG清单；类别合计与官方页15一致。
+
+| 类型 | 构成 | 合计 |
+|---|---|---:|
+| Noble 黄 | Manor 3×5；Castle 4×4；Palace 5×3 | 12 |
+| Religious 蓝 | Temple 1×3；Church 2×3；Monastery 3×3；Cathedral 5×2 | 11 |
+| Trade 绿 | Tavern 1×5；Market 2×4；Trading Post 2×3；Docks 3×3；Harbor 4×3；Town Hall 5×2 | 20 |
+| Military 红 | Watchtower 1×3；Prison 2×3；Barracks 3×3；Fortress 5×2 | 11 |
+
+## 实现边界说明
+
+完整官方手册已找到，无需补拍手册。若后续要逐卡确证，优先补拍上述14张独特建筑和 Artist 卡面。基础角色为 Assassin、Thief、Magician、King、Bishop、Merchant、Architect、Warlord，三人加 Artist。中文名称可自译，保留英文ID便于核对，避免混用不同中文版本译名。
