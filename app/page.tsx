@@ -469,6 +469,12 @@ export default function Home() {
               </button>
               <button
                 className="text-button"
+                onClick={() => copy(state.code)}
+              >
+                复制房间号
+              </button>
+              <button
+                className="text-button"
                 onClick={() => setSecrets(!secrets)}
               >
                 恢复密钥
@@ -504,7 +510,7 @@ export default function Home() {
                           ? p.ready
                             ? "已准备"
                             : "等待准备"
-                          : `◉ ${p.gold} · 手牌 ${p.handCount} · 城市 ${p.city.length}/${state.target}`}
+                          : `◉ 金币 ${p.gold} · 手牌 ${p.handCount} · 城市 ${p.city.length}/${state.target}`}
                       </small>
                       <span className="role-chips">
                         {p.roles.map((r) => (
@@ -526,7 +532,7 @@ export default function Home() {
                   <div className="large-crown">♛</div>
                   <h2>朋友到齐，就开局。</h2>
                   <p>
-                    复制右上角房间链接发给朋友。所有人准备后，房主即可开始。
+                    点击右上角房间码复制邀请链接，也可以单独复制房间号。所有人准备后，房主即可开始。
                   </p>
                   <div className="lobby-specs">
                     <span>
@@ -580,7 +586,7 @@ export default function Home() {
                           {mine
                             ? state.discardPending
                               ? "秘密弃掉一个角色"
-                              : "选择你的角色"
+                              : "盲选你的角色"
                             : `等待 ${state.players.find((p) => p.id === state.active)?.name} 选角`}
                         </h2>
                         <span>
@@ -592,8 +598,8 @@ export default function Home() {
                       <p>
                         {mine
                           ? state.discardPending
-                            ? "这张角色不会传给下一位玩家。"
-                            : "只有你能看到可选角色。点击卡片，确定本轮身份。"
+                            ? "选择一张牌背暗弃；不会显示身份，也不会传给下一位玩家。"
+                            : "角色牌已洗牌，选牌前不显示身份。点击一张牌背，选中后仅你可见。"
                           : "这一刻，最好的策略是让朋友猜不透你。"}
                       </p>
                       {state.faceup.length > 0 && (
@@ -606,33 +612,27 @@ export default function Home() {
                       )}
                       <div className="role-grid">
                         {mine
-                          ? state.available.map((r) => (
+                          ? state.draftSlots.map((slot) => (
                               <button
-                                key={r}
-                                className="role-card"
+                                key={slot}
+                                className="card-back draft-card"
                                 disabled={busy}
+                                aria-label={`${state.discardPending ? "暗弃" : "盲选"}第 ${slot + 1} 张角色牌`}
                                 onClick={() =>
                                   act({
                                     type: state.discardPending
                                       ? "discardRole"
                                       : "pick",
-                                    role: r,
+                                    slot,
                                   })
                                 }
                               >
-                                <span className="role-no">
-                                  {String(r).padStart(2, "0")}
-                                </span>
-                                <span className="role-icon">
-                                  {roles[r - 1].icon}
-                                </span>
-                                <h3>{roles[r - 1].name}</h3>
-                                <small>{roles[r - 1].en}</small>
-                                <p>{roles[r - 1].text}</p>
+                                <span aria-hidden="true">♜</span>
+                                <small>CITADELS</small>
                                 <b>
                                   {state.discardPending
-                                    ? "弃置角色"
-                                    : "选择角色"}{" "}
+                                    ? "暗弃这张"
+                                    : "盲选这张"}{" "}
                                   →
                                 </b>
                               </button>
@@ -885,7 +885,7 @@ export default function Home() {
                   <section className="hand-section">
                     <div className="section-heading">
                       <h2>
-                        我的手牌 <small>仅你可见</small>
+                        我的手牌 <small>仅你可见 · 已按类别整理</small>
                       </h2>
                       <span>
                         ◉ {me?.gold} 金币 · {me?.handCount} 张
@@ -1092,9 +1092,12 @@ export default function Home() {
             <div className="eyebrow">A LITTLE GUIDE</div>
             <h2>一起，把这座城建起来。</h2>
             <p>
-              所有人准备 → 房主开始 → 秘密选角 → 按编号依次行动。每回合采集 2
+              所有人准备 → 房主开始 → 盲选角色 → 按编号依次行动。每回合采集 2
               金币，或抽 2 张建筑保留 1 张；支付造价建造，通常每回合限 1
               座。角色与建筑能力按说明使用。
+            </p>
+            <p>
+              本房间采用盲选玩法：选角与弃角均只显示牌背，选中后仅本人知道身份；其余角色牌会重新洗牌后供下一步选择。
             </p>
             <h3>2–3 人，两个身份，一座城市</h3>
             <p>

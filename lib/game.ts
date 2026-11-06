@@ -56,6 +56,7 @@ export type Game = {
 export type Action = {
   type: string;
   role?: number;
+  slot?: number;
   target?: string;
   card?: string;
   cards?: string[];
@@ -361,6 +362,7 @@ function nextDraft(g: Game) {
   if (n >= 7 && g.draftIndex === n - 1) {
     g.available.push(g.facedown);
   }
+  g.available = shuffle(g.available);
   g.active = g.draftOrder[g.draftIndex];
 }
 function advance(g: Game) {
@@ -480,16 +482,22 @@ export function apply(g: Game, id: string, a: Action) {
       a.type === (g.discardPending ? "discardRole" : "pick"),
       "请完成当前选角步骤",
     );
-    check(g.available.includes(a.role!), "此角色不可选");
-    g.available = g.available.filter((x) => x !== a.role);
+    // Clients select a face-down position, never a role identity.
+    check(a.role === undefined, "请刷新页面后盲选角色");
+    check(
+      Number.isInteger(a.slot) && a.slot! >= 0 && a.slot! < g.available.length,
+      "请选择一张有效的角色牌",
+    );
+    const [role] = g.available.splice(a.slot!, 1);
     if (g.discardPending) {
       g.discardPending = false;
       nextDraft(g);
       return;
     }
-    p.roles.push(a.role!);
+    p.roles.push(role);
     if (g.players.length === 2 && (g.draftIndex === 1 || g.draftIndex === 2)) {
       g.discardPending = true;
+      g.available = shuffle(g.available);
       return;
     }
     nextDraft(g);
@@ -684,6 +692,15 @@ export function apply(g: Game, id: string, a: Action) {
   }
   throw new Error("未知操作");
 }
+const handColorOrder: Color[] = ["noble", "religious", "trade", "military", "unique"];
+function sortHand(hand: Card[]) {
+  return [...hand].sort((a, b) =>
+    handColorOrder.indexOf(a.color) - handColorOrder.indexOf(b.color) ||
+    a.cost - b.cost ||
+    a.key.localeCompare(b.key) ||
+    a.id.localeCompare(b.id),
+  );
+}
 export function view(g: Game, id: string) {
   const me = g.players.find((p) => p.id === id);
   check(me, "没有该房间的访问权限");
@@ -712,14 +729,14 @@ export function view(g: Game, id: string) {
       gold: p.gold,
       city: p.city,
       handCount: p.hand.length,
-      hand: p.id === id ? p.hand : [],
+      hand: p.id === id ? sortHand(p.hand) : [],
       roles: p.id === id || g.phase === "finished" ? p.roles : p.revealed,
       revealed: p.revealed,
       ready: p.ready,
     })),
-    available:
+    draftSlots:
       g.phase === "draft" && mine
-        ? g.available.slice().sort((a, b) => a - b)
+        ? g.available.map((_, index) => index)
         : [],
     discardPending: g.discardPending && mine,
     turn: g.phase === "turn" && mine ? g.turn : null,

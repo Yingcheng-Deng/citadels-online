@@ -64,7 +64,7 @@ test("two-player draft has explicit discard after second and third picks", () =>
     seen.push(g.available.length);
     run(g, {
       type: g.discardPending ? "discardRole" : "pick",
-      role: g.available[0],
+      slot: 0,
     });
   }
   assert.deepEqual(seen, [7, 6, 5, 4, 3, 2]);
@@ -80,7 +80,7 @@ test("three-player draft has a random discard after the third selection", () => 
   while (g.phase === "draft") {
     seen.push(g.available.length);
     assert.equal(g.discardPending, false);
-    run(g, { type: "pick", role: g.available[0] });
+    run(g, { type: "pick", slot: 0 });
   }
   assert.deepEqual(seen, [8, 7, 6, 4, 3, 2]);
   assert.deepEqual(
@@ -98,7 +98,7 @@ test("4–8 player draft rules, king never face-up, final seat gets dark card", 
       while (g.phase === "draft") {
         if (n >= 7 && g.draftIndex === n - 1)
           assert.equal(g.available.length, 2);
-        run(g, { type: "pick", role: g.available[0] });
+        run(g, { type: "pick", slot: 0 });
       }
       assert.ok(g.players.every((p) => p.roles.length === 1));
       assert.equal(g.target, 7);
@@ -109,17 +109,88 @@ test("unauthorized player cannot act or see secrets", () => {
   const g = game();
   const other = g.players.find((p) => p.id !== g.active)!;
   assert.throws(
-    () => apply(g, other.id, { type: "pick", role: g.available[0] }),
+    () => apply(g, other.id, { type: "pick", slot: 0 }),
     /等待/,
   );
   const v = view(g, other.id);
-  assert.deepEqual(v.available, []);
+  assert.deepEqual(v.draftSlots, []);
   assert.deepEqual(v.players.find((p) => p.id !== other.id)!.hand, []);
   const text = JSON.stringify(v);
   assert.ok(!text.includes("secret"));
   assert.ok(!("deck" in v));
   assert.throws(() => view(g, "outsider"));
 });
+test("blind draft exposes only positions, reveals a picked role only to its owner", () => {
+  const g = game();
+  const id = g.active;
+  const other = g.players.find((p) => p.id !== id)!;
+  const before = view(g, id);
+  assert.deepEqual(before.draftSlots, g.available.map((_, i) => i));
+  assert.ok(!("available" in before));
+  assert.ok(!("facedown" in before));
+  // Changing every position's identity cannot change the client's view.
+  g.available.reverse();
+  assert.deepEqual(view(g, id), before);
+  assert.deepEqual(view(JSON.parse(JSON.stringify(g)), id), before);
+  const chosen = g.available[2];
+  apply(g, id, { type: "pick", slot: 2 });
+  assert.deepEqual(view(g, id).players.find((p) => p.id === id)!.roles, [chosen]);
+  assert.deepEqual(view(g, other.id).players.find((p) => p.id === id)!.roles, []);
+  assert.ok(!g.available.includes(chosen));
+});
+
+test("blind draft rejects role identities and invalid positions without changing state", () => {
+  const g = game();
+  for (const slot of [undefined, -1, 0.5, NaN, Infinity, g.available.length, "0", null]) {
+    const before = JSON.stringify(g);
+    assert.throws(() => run(g, { type: "pick", slot: slot as number }), /有效/);
+    assert.equal(JSON.stringify(g), before);
+  }
+  const before = JSON.stringify(g);
+  assert.throws(() => run(g, { type: "pick", role: g.available[0] }), /刷新/);
+  assert.throws(() => run(g, { type: "pick", role: g.available[0], slot: 0 }), /刷新/);
+  assert.equal(JSON.stringify(g), before);
+});
+
+test("blind discard removes a position without revealing or assigning its role", () => {
+  const g = game();
+  run(g, { type: "pick", slot: 0 });
+  run(g, { type: "pick", slot: 0 });
+  assert.equal(g.discardPending, true);
+  const discarded = g.available[1];
+  const assigned = g.players.map((p) => [...p.roles]);
+  const log = [...g.log];
+  run(g, { type: "discardRole", slot: 1 });
+  assert.ok(!g.available.includes(discarded));
+  assert.deepEqual(g.players.map((p) => p.roles), assigned);
+  assert.deepEqual(g.log, log);
+  for (const p of g.players)
+    assert.ok(view(g, p.id).players.every((other) => !other.roles.includes(discarded)));
+});
+
+test("hand views group colors, costs and matching buildings without changing card identity or game order", () => {
+  const g = game();
+  const p = g.players[0];
+  const market1 = { ...card("market"), id: "market-1" };
+  const market2 = { ...card("market"), id: "market-2" };
+  const tradingPost = newDeck().find((c) => c.color === "trade" && c.cost === 2 && c.key !== "market")!;
+  p.hand = [card("library"), market2, card("palace"), tradingPost, card("temple"), card("manor"), market1];
+  const original = structuredClone(p.hand);
+  const hand = view(g, p.id).players[0].hand;
+  assert.deepEqual(hand.map((c) => c.color), ["noble", "noble", "religious", "trade", "trade", "trade", "unique"]);
+  assert.deepEqual(hand.slice(0, 2).map((c) => c.key), ["manor", "palace"]);
+  const markets = hand.flatMap((c, i) => c.key === "market" ? [i] : []);
+  assert.equal(markets[1] - markets[0], 1);
+  assert.deepEqual(new Set(hand.map((c) => c.id)), new Set(original.map((c) => c.id)));
+  assert.deepEqual(p.hand, original);
+  assert.deepEqual(view(g, g.players[1].id).players[0].hand, []);
+  p.hand.push(card("church"));
+  const refreshed = view(g, p.id).players[0].hand;
+  assert.deepEqual(refreshed.filter((c) => c.color === "religious").map((c) => c.key), ["temple", "church"]);
+  p.hand = [market2, card("manor")];
+  assert.deepEqual(view(g, p.id).players[0].hand.map((c) => c.key), ["manor", "market"]);
+});
+
 test("assassination skips a role without revealing its holder", () => {
   const g = turn(1);
   g.players[1].roles = [4, 6];
@@ -312,7 +383,7 @@ test("full 2, 3 and 8 player games finish, conserve cards and reset turn limits"
         if (g.phase === "draft") {
           run(g, {
             type: g.discardPending ? "discardRole" : "pick",
-            role: g.available[0],
+            slot: 0,
           });
           continue;
         }

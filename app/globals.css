@@ -588,6 +588,20 @@ footer {
   font-size: 10px;
   letter-spacing: 3px;
 }
+.draft-card {
+  width: 100%;
+  gap: 8px;
+}
+.draft-card b {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.draft-card:hover:not(:disabled),
+.draft-card:focus-visible {
+  background-color: #244331;
+  outline: 2px solid #a19677;
+  outline-offset: 3px;
+}
 .action-panel > p {
   font-size: 12px;
 }
@@ -1060,7 +1074,7 @@ th {
   .role-card p {
     min-height: 50px;
   }
-  .card-back:last-child {
+  .card-back:not(.draft-card):last-child {
     display: none;
   }
   .end-turn {

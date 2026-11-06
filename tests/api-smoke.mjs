@@ -67,9 +67,18 @@ for (const n of [2, 3]) {
   while (r.state.phase === "draft" && steps++ < 12) {
     const s = seats.find((s) => s.id === r.state.active);
     const mine = await read(code, s.token);
+    assert.ok(!("available" in mine.state));
+    assert.deepEqual(mine.state.draftSlots, mine.state.draftSlots.map((_, i) => i));
+    assert.deepEqual((await read(code, s.token)).state.draftSlots, mine.state.draftSlots);
+    const invalidPick = await post(
+      { code, revision: mine.revision, action: { type: mine.state.discardPending ? "discardRole" : "pick", role: 1 } },
+      s.token,
+    );
+    assert.equal(invalidPick.status, 400);
+    assert.equal((await read(code, s.token)).revision, mine.revision);
     const other = seats.find((x) => x.id !== s.id);
     const hidden = await read(code, other.token);
-    assert.deepEqual(hidden.state.available, []);
+    assert.deepEqual(hidden.state.draftSlots, []);
     assert.ok(!JSON.stringify(hidden).includes(s.token));
     assert.equal(
       hidden.state.players.find((p) => p.id === s.id).hand.length,
@@ -81,7 +90,7 @@ for (const n of [2, 3]) {
         revision: mine.revision,
         action: {
           type: mine.state.discardPending ? "discardRole" : "pick",
-          role: mine.state.available[0],
+          slot: mine.state.draftSlots[0],
         },
       },
       s.token,
