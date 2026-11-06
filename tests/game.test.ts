@@ -7,6 +7,8 @@ import {
   apply,
   view,
   newDeck,
+  cardCatalog,
+  citySize,
   score,
   type Game,
   type Card,
@@ -20,7 +22,7 @@ function game(n = 2) {
   return g;
 }
 function card(key: string): Card {
-  return { ...newDeck().find((c) => c.key === key)!, id: `${key}-0` };
+  return { ...cardCatalog.find((c) => c.key === key)!, id: `${key}-0` };
 }
 function turn(role: number, n = 2) {
   const g = game(n);
@@ -45,7 +47,7 @@ function conserve(g: Game) {
   const cards = [
     ...g.deck,
     ...g.turn.choices,
-    ...g.players.flatMap((p) => [...p.hand, ...p.city]),
+    ...g.players.flatMap((p) => [...p.hand, ...p.city, ...p.city.flatMap((c) => c.stored || [])]),
   ];
   assert.equal(cards.length, 68);
   assert.equal(new Set(cards.map((c) => c.id)).size, 68);
@@ -116,7 +118,8 @@ test("unauthorized player cannot act or see secrets", () => {
   assert.deepEqual(v.draftSlots, []);
   assert.deepEqual(v.players.find((p) => p.id !== other.id)!.hand, []);
   const text = JSON.stringify(v);
-  assert.ok(!text.includes("secret"));
+  assert.ok(!text.includes('"secret":'));
+  for (const player of g.players) assert.ok(!text.includes(player.secret));
   assert.ok(!("deck" in v));
   assert.throws(() => view(g, "outsider"));
 });
@@ -359,7 +362,7 @@ test("haunted quarter needs another purple for five colors; well includes self",
   assert.equal(score(g, p).variety, 0);
   p.city.push(card("well"));
   assert.equal(score(g, p).variety, 3);
-  assert.equal(score(g, p).special, 2);
+  assert.equal(score(g, p).special, 1);
 });
 test("endgame scoring uses revealed rank, never unrevealed assassinated role", () => {
   const g = turn(4);
@@ -373,14 +376,15 @@ test("endgame scoring uses revealed rank, never unrevealed assassinated role", (
   assert.equal(score(g, p).special, 16);
   assert.equal(score(g, p).highestRole, 4);
 });
-test("full 2, 3 and 8 player games finish, conserve cards and reset turn limits", () => {
-  for (const n of [2, 3, 8]) {
+test("full 2–8 player games finish, conserve cards and reset turn limits", () => {
+  for (const n of [2, 3, 4, 5, 6, 7, 8]) {
     for (let repeat = 0; repeat < 5; repeat++) {
       const g = game(n);
       let steps = 0;
       while (g.phase !== "finished" && steps++ < 6000) {
         conserve(g);
         if (g.phase === "draft") {
+          if (g.theaterPending) { run(g, { type: "skipTheater" }); continue; }
           run(g, {
             type: g.discardPending ? "discardRole" : "pick",
             slot: 0,
@@ -408,7 +412,7 @@ test("full 2, 3 and 8 player games finish, conserve cards and reset turn limits"
           continue;
         }
         const c = p.hand.find(
-          (c) => c.cost <= p.gold && !p.city.some((x) => x.key === c.key),
+          (c) => c.key !== "secretvault" && (c.key !== "monument" || p.city.length < 5) && c.cost <= p.gold && !p.city.some((x) => x.key === c.key),
         );
         if (c && g.turn.built < (g.role === 7 ? 3 : 1)) {
           run(g, { type: "build", card: c.id });

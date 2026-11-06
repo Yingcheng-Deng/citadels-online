@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { GameDialog } from "../components/game-dialog";
+import { Tutorial } from "../components/tutorial";
 import {
   roles,
   cardCatalog,
@@ -15,87 +17,48 @@ const colors: Record<string, string> = {
   unique: "独特",
 };
 type Session = { code: string; token: string };
-function Skyline() {
-  return (
-    <svg className="skyline" viewBox="0 0 1000 460" aria-hidden="true">
-      <defs>
-        <linearGradient id="stone" x2="0" y2="1">
-          <stop stopColor="#a3b8ab" />
-          <stop offset="1" stopColor="#526f63" />
-        </linearGradient>
-        <linearGradient id="night" x2="0" y2="1">
-          <stop stopColor="#25483b" />
-          <stop offset="1" stopColor="#14372c" />
-        </linearGradient>
-      </defs>
-      <circle cx="720" cy="105" r="60" fill="#e3d1a3" opacity=".9" />
-      <path
-        d="M0 380Q300 220 580 330T1000 300V460H0Z"
-        fill="#496b5b"
-        opacity=".5"
-      />
-      <g fill="url(#stone)" stroke="#153c30" strokeWidth="3">
-        <path d="M170 410V230h78V410M260 410V170h110V410M400 410V230h150V410M555 410V120h80V410M650 410V210h110V410M780 410V275h92V410" />
-        <path
-          d="M130 235l78-80 80 80ZM238 174l78-110 78 110ZM378 234l98-88 98 88ZM530 124l65-108 65 108ZM622 214l84-98 83 98ZM760 279l65-80 65 80Z"
-          fill="#2c5143"
-        />
-        <path d="M310 64V20l36 14-36 13M595 16V0" fill="#c8a76c" />
-        <path d="M90 430V346h820v84" fill="url(#night)" />
-        <path
-          d="M90 346v-23h30v23h35v-23h30v23h35v-23h30v23h35v-23h30v23h35v-23h30v23h35v-23h30v23h35v-23h30v23h35v-23h30v23h35v-23h30v23h35v-23h30v23h35v-23h30v23h35v-23h30v23"
-          fill="#648574"
-        />
-        <path d="M463 430v-45a38 38 0 0 1 76 0v45" fill="#102e24" />
-      </g>
-      <g fill="#ead7a2">
-        {[192, 218, 288, 330, 423, 465, 507, 580, 607, 679, 721, 808, 842].map(
-          (x, i) => (
-            <path
-              key={x}
-              d={`M${x} ${i > 9 ? 300 : i > 6 ? 160 : 260}v20h8v-20a4 4 0 0 0-8 0`}
-            />
-          ),
-        )}
-      </g>
-      <path d="M0 440Q350 400 500 431T1000 429V460H0Z" fill="#102f26" />
-    </svg>
-  );
-}
 function District({
   card,
   children,
 }: {
-  card: Card;
+  card: Card & { storedCount?: number };
   children?: React.ReactNode;
 }) {
+  const [expanded, setExpanded] = useState(false);
   return (
     <article className={`district ${card.color}`}>
       <div className="card-top">
         <span>{colors[card.color]}</span>
         <b>◉ {card.cost + (card.decorated ? 1 : 0)}</b>
       </div>
-      <div className="district-art" aria-hidden="true">
-        {card.color === "religious"
-          ? "♧"
-          : card.color === "military"
-            ? "♜"
-            : card.color === "noble"
-              ? "♛"
-              : card.color === "trade"
-                ? "⌂"
-                : "✧"}
-      </div>
+      <button className="card-preview" onClick={() => setExpanded(true)} aria-label={`放大查看${card.name}`}>
+        <img className="district-face" src={`/cards/${card.key}.webp`} alt={`${card.name}原版卡面`} loading="lazy" width="600" height="941" />
+        <span>点击放大 ↗</span>
+      </button>
       <h4>
         {card.name}
         {card.decorated ? " ✦" : ""}
       </h4>
       <p>{card.text || "建造属于你的城市，获得等同造价的分数。"}</p>
+      {card.key === "museum" && card.storedCount !== undefined && <p className="museum-count">已收藏 {card.storedCount} 张 · 终局 +{card.storedCount} 分</p>}
       {children}
+      {expanded && <GameDialog title={`${card.name}卡牌详情`} onClose={() => setExpanded(false)} className="card-dialog">
+        <img src={`/cards/${card.key}.webp`} alt={`${card.name}原版卡面大图`} />
+        <div><div className="eyebrow">{colors[card.color]} · {card.key === "secretvault" ? "不可建造" : `造价 ${card.cost + (card.decorated ? 1 : 0)} 金币`}</div>
+          <h2>{card.name}{card.decorated ? " · 已美化" : ""}</h2>
+          <p>{card.text || "支付造价后，从手牌放入城市。游戏结束时，获得等同造价的基础分数。"}</p>
+          <p className="lesson-note">卡面为原版英文图案，下方中文说明用于本网站游玩。特殊能力通常在建筑建成后生效。</p>
+        </div>
+      </GameDialog>}
     </article>
   );
 }
 export default function Home() {
+  const [tutorial, setTutorial] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [roleInfo, setRoleInfo] = useState<number | null>(null);
+  const [freeBuild, setFreeBuild] = useState<Card | null>(null);
+  const [confirmation, setConfirmation] = useState<{title:string; action:Action} | null>(null);
   const [state, setState] = useState<GameView | null>(null),
     [session, setSession] = useState<Session | null>(null),
     [revision, setRevision] = useState(0);
@@ -142,6 +105,9 @@ export default function Home() {
     setConnected(true);
   }
   useEffect(() => {
+    try {
+      if (!localStorage.getItem("citadels-tutorial-seen") && !sessionStorage.getItem("citadels-seat")) setTutorial(true);
+    } catch {}
     const room = new URLSearchParams(location.search).get("room");
     if (room) {
       setCode(room);
@@ -187,6 +153,10 @@ export default function Home() {
     sessionStorage.removeItem("citadels-seat");
     rev.current = -1;
     setError("");
+  }
+  function closeTutorial() {
+    setTutorial(false);
+    try { localStorage.setItem("citadels-tutorial-seen", "yes"); } catch {}
   }
   async function enter(type: string) {
     if (inFlight.current) return;
@@ -287,6 +257,7 @@ export default function Home() {
         </a>
         <nav>
           <span className="edition">FRIENDS AROUND THE TABLE</span>
+          <button className="text-button" onClick={() => setTutorial(true)}>新手教学</button>
           <button className="text-button" onClick={() => setHelp(true)}>
             玩法与规则 ↗
           </button>
@@ -330,8 +301,9 @@ export default function Home() {
             </div>
             <div className="scene">
               <span className="scene-label">每一座城，都有你的故事。</span>
-              <Skyline />
+              <img className="cover-art" src="/art/city-cover.png" alt="参考实体桌游封面元素创作的奇幻城邦：彩色尖塔、石桥、钟楼与圆桌伙伴" fetchPriority="high" />
             </div>
+            <button className="learn-entry" onClick={() => setTutorial(true)}><span>第一次玩？</span><b>3 分钟，亲手学会一回合 →</b></button>
             <div className="hero-foot">
               <span>01 / 秘密选角</span>
               <span>02 / 收集与建造</span>
@@ -426,7 +398,7 @@ export default function Home() {
               </div>
             </div>
             <div className="version-note">
-              基础角色 + 艺术家 · 14 种独特建筑
+              基础角色 + 艺术家 · 每局从 30 种独特建筑随机选 14 种
               <br />
               基于新版规则的非官方朋友联机项目
             </div>
@@ -479,6 +451,7 @@ export default function Home() {
               >
                 恢复密钥
               </button>
+              {state.phase !== "lobby" && <button className="text-button" onClick={() => setCatalogOpen(true)}>本局独特建筑</button>}
             </div>
           </div>
           {secrets && (
@@ -510,17 +483,17 @@ export default function Home() {
                           ? p.ready
                             ? "已准备"
                             : "等待准备"
-                          : `◉ 金币 ${p.gold} · 手牌 ${p.handCount} · 城市 ${p.city.length}/${state.target}`}
+                          : `◉ 金币 ${p.gold} · 手牌 ${p.handCount} · 城市 ${p.cityCount}/${state.target}`}
                       </small>
                       <span className="role-chips">
                         {p.roles.map((r) => (
-                          <i key={r}>
+                          <button className="role-chip" key={r} onClick={() => setRoleInfo(r)} title="查看角色卡和能力">
                             {r} {roles[r - 1].name}
                             {!p.revealed.includes(r) &&
                             state.phase !== "finished"
                               ? " · 暗"
                               : ""}
-                          </i>
+                          </button>
                         ))}
                       </span>
                     </div>
@@ -534,6 +507,8 @@ export default function Home() {
                   <p>
                     点击右上角房间码复制邀请链接，也可以单独复制房间号。所有人准备后，房主即可开始。
                   </p>
+                  <p className="deck-explainer">本局开局时，从 30 种独特建筑随机选 14 种（包含不同造价），混入 54 张普通建筑；再次开局会重新抽选。</p>
+                  <button onClick={() => setTutorial(true)}>第一次玩？先练习一回合</button>
                   <div className="lobby-specs">
                     <span>
                       <b>{state.players.length}</b> / 8 位入席
@@ -584,10 +559,12 @@ export default function Home() {
                       <div className="section-heading">
                         <h2>
                           {mine
-                            ? state.discardPending
+                            ? state.theaterPending
+                              ? "剧院：交换一个身份？"
+                              : state.discardPending
                               ? "秘密弃掉一个角色"
                               : "盲选你的角色"
-                            : `等待 ${state.players.find((p) => p.id === state.active)?.name} 选角`}
+                            : `等待 ${state.players.find((p) => p.id === state.active)?.name} ${state.theaterPending ? "使用剧院" : "选角"}`}
                         </h2>
                         <span>
                           {state.players.length <= 3
@@ -597,7 +574,9 @@ export default function Home() {
                       </div>
                       <p>
                         {mine
-                          ? state.discardPending
+                          ? state.theaterPending
+                            ? "所有人已选好身份。你可以交换自己的一个角色，或跳过；对方身份在交换前不可见。"
+                            : state.discardPending
                             ? "选择一张牌背暗弃；不会显示身份，也不会传给下一位玩家。"
                             : "角色牌已洗牌，选牌前不显示身份。点击一张牌背，选中后仅你可见。"
                           : "这一刻，最好的策略是让朋友猜不透你。"}
@@ -610,7 +589,12 @@ export default function Home() {
                             .join("、")}
                         </p>
                       )}
-                      <div className="role-grid">
+                      {state.theaterPending && mine ? <div className="theater-actions">
+                        {me?.roles.map((role) => <div key={role}><h3>交出：{roles[role - 1].name}</h3><div className="button-row">
+                          {state.players.filter((p) => p.id !== state.me).map((p) => <button key={p.id} disabled={busy} onClick={() => act({type:"theater",role,target:p.id})}>与 {p.name} 交换</button>)}
+                        </div></div>)}
+                        <button disabled={busy} onClick={() => act({type:"skipTheater"})}>保留身份，跳过剧院</button>
+                      </div> : <div className="role-grid">
                         {mine
                           ? state.draftSlots.map((slot) => (
                               <button
@@ -627,8 +611,6 @@ export default function Home() {
                                   })
                                 }
                               >
-                                <span aria-hidden="true">♜</span>
-                                <small>CITADELS</small>
                                 <b>
                                   {state.discardPending
                                     ? "暗弃这张"
@@ -643,7 +625,7 @@ export default function Home() {
                                 <small>CITADELS</small>
                               </div>
                             ))}
-                      </div>
+                      </div>}
                     </section>
                   )}
                   {state.phase === "turn" && (
@@ -663,7 +645,8 @@ export default function Home() {
                       )}
                       {mine && t ? (
                         <>
-                          <p>{roles[state.role - 1]?.text}</p>
+                          <div className="active-role"><button onClick={() => setRoleInfo(state.role)} aria-label="放大当前角色卡"><img src={`/cards/role-${state.role}.webp`} alt={roles[state.role - 1]?.name} /></button><div><h3>{roles[state.role - 1]?.name}</h3><p>{roles[state.role - 1]?.text}</p></div></div>
+                          <div className="turn-guide"><b>{t.choices.length ? "下一步：从抽到的牌中选择一张保留" : !t.gathered ? "下一步：采集金币或抽建筑牌" : "下一步：建造、使用能力，完成后结束回合"}</b><span>普通角色建 1 座，建筑师建 3 座；马厩不占次数。能力可按卡面时机使用。</span></div>
                           {t.choices.length ? (
                             <>
                               <h3>选择一张建筑保留</h3>
@@ -690,13 +673,13 @@ export default function Home() {
                                   disabled={busy || t.gathered}
                                   onClick={() => act({ type: "gold" })}
                                 >
-                                  ◉ 采集 2 金币
+                                  ◉ 采集 {me?.city.some((c) => c.key === "goldmine") ? 3 : 2} 金币
                                 </button>
                                 <button
                                   disabled={busy || t.gathered}
                                   onClick={() => act({ type: "cards" })}
                                 >
-                                  ▱ 抽取建筑牌
+                                  ▱ 抽 {me?.city.some((c) => c.key === "observatory") ? 3 : 2} 张建筑牌{me?.city.some((c) => c.key === "library") ? "，全部保留" : "，保留 1 张"}
                                 </button>
                                 {[4, 5, 6, 8].includes(state.role) && (
                                   <button
@@ -922,7 +905,9 @@ export default function Home() {
                                   disabled={
                                     busy ||
                                     !t.gathered ||
-                                    t.built >= (state.role === 7 ? 3 : 1)
+                                    (c.key !== "stables" && t.built >= (state.role === 7 ? 3 : 1)) ||
+                                    c.key === "secretvault" ||
+                                    (c.key === "monument" && me.city.length >= 5)
                                   }
                                   onClick={() =>
                                     act({
@@ -935,11 +920,13 @@ export default function Home() {
                                     })
                                   }
                                 >
-                                  建造
+                                  {c.key === "secretvault" ? "留在手中 · 终局 +3 分" : "建造"}
                                   {c.key === "den" && selected.length
                                     ? "（勾选牌抵扣）"
                                     : ""}
                                 </button>
+                                {c.key !== "secretvault" && me.city.some((x) => x.key === "framework" || c.key === "necropolis") && <button disabled={busy || !t.gathered || (c.key !== "stables" && t.built >= (state.role === 7 ? 3 : 1))} onClick={() => setFreeBuild(c)}>拆除建筑，免费建造…</button>}
+                                {me.city.some((x) => x.key === "museum") && <button disabled={busy || !can("museum")} onClick={() => act({type:"museum",card:c.id})}>博物馆：收藏此牌</button>}
                                 {me.city.some(
                                   (x) => x.key === "laboratory",
                                 ) && (
@@ -968,7 +955,7 @@ export default function Home() {
                         <h3>
                           {p.name}{" "}
                           <small>
-                            {p.city.length} 座建筑{" "}
+                            {p.city.length} 张建筑 · 完城进度 {p.cityCount}/{state.target}{" "}
                             {p.revealed.includes(5) && state.killed !== 5
                               ? "· 主教守护"
                               : ""}
@@ -989,7 +976,7 @@ export default function Home() {
                                       disabled={
                                         busy ||
                                         !can("power") ||
-                                        p.city.length >= state.target ||
+                                        p.cityCount >= state.target ||
                                         c.key === "keep" ||
                                         (p.revealed.includes(5) &&
                                           state.killed !== 5)
@@ -1006,10 +993,11 @@ export default function Home() {
                                       {Math.max(
                                         0,
                                         c.cost + (c.decorated ? 1 : 0) - 1,
-                                      )}{" "}
+                                      ) + (c.key !== "greatwall" && p.city.some((x) => x.key === "greatwall") ? 1 : 0)}{" "}
                                       金币
                                     </button>
                                   )}
+                                {mine && state.phase === "turn" && me?.city.some((x) => x.key === "armory") && !(p.id === state.me && c.key === "armory") && <button disabled={busy || !t || !!t.choices.length || p.cityCount >= state.target} onClick={() => setConfirmation({title:`拆除自己的军械库，同时拆除 ${p.name} 的${c.name}？`,action:{type:"armory",target:p.id,card:c.id}})}>军械库：同时拆除此建筑</button>}
                                 {mine &&
                                   state.phase === "turn" &&
                                   state.role === 9 &&
@@ -1073,6 +1061,20 @@ export default function Home() {
         <span>一局游戏，让距离近一点。</span>
         <span>非官方同好项目 · 规则 / Bruno Faidutti</span>
       </footer>
+      {tutorial && <Tutorial onClose={closeTutorial} />}
+      {catalogOpen && state && <GameDialog title="本局独特建筑" onClose={() => setCatalogOpen(false)} className="catalog-dialog">
+        <div className="eyebrow">THIS GAME · 14 UNIQUE DISTRICTS</div><h2>本局独特建筑</h2><p>本局使用以下 14 种独特建筑，以及全部 54 张普通建筑。这里只显示入选名单，不显示牌在谁手中或抽牌顺序。</p>
+        <div className="cards">{cardCatalog.filter((c) => state.uniqueKeys.includes(c.key)).map((c) => <District key={c.key} card={{...c,id:c.key}} />)}</div>
+      </GameDialog>}
+      {roleInfo !== null && <GameDialog title="角色卡详情" onClose={() => setRoleInfo(null)} className="card-dialog">
+        <img src={`/cards/role-${roleInfo}.webp`} alt={`${roles[roleInfo - 1].name}原版角色卡`} />
+        <div><div className="eyebrow">角色 {roleInfo} · {roles[roleInfo - 1].en}</div><h2>{roles[roleInfo - 1].name}</h2><p>{roles[roleInfo - 1].text}</p><p>角色按编号从小到大行动。每项能力每个角色回合限用一次；结束后要等下一轮重新选角。</p></div>
+      </GameDialog>}
+      {freeBuild && <GameDialog title="免费建造" onClose={() => setFreeBuild(null)}>
+        <h2>免费建造{freeBuild.name}</h2><p>选择一座自己的建筑拆除，代替支付金币。被拆建筑和博物馆藏牌会回到牌库底。</p>
+        <div className="button-row">{me?.city.filter((c) => c.key === "framework" || freeBuild.key === "necropolis").map((c) => <button key={c.id} disabled={busy} onClick={() => { setConfirmation({title:`拆除${c.name}，免费建造${freeBuild.name}？`,action:{type:"build",card:freeBuild.id,sacrifice:c.id}}); setFreeBuild(null); }}>拆除{c.name}</button>)}</div>
+      </GameDialog>}
+      {confirmation && <GameDialog title="确认建筑操作" onClose={() => setConfirmation(null)}><h2>{confirmation.title}</h2><div className="button-row"><button className="primary" disabled={busy} onClick={() => { act(confirmation.action); setConfirmation(null); }}>确认操作</button><button onClick={() => setConfirmation(null)}>取消</button></div></GameDialog>}
       {help && (
         <div className="modal-backdrop" onClick={() => setHelp(false)}>
           <section
@@ -1115,29 +1117,22 @@ export default function Home() {
             <h3>角色速查</h3>
             <div className="reference-roles">
               {roles.map((r) => (
-                <p key={r.id}>
-                  <b>
-                    {r.id} · {r.name}　
-                  </b>
-                  {r.text}
-                </p>
+                <button className="reference-role" key={r.id} onClick={() => setRoleInfo(r.id)}>
+                  <img src={`/cards/role-${r.id}.webp`} alt={`${r.name}原版角色卡`} loading="lazy" />
+                  <span><b>{r.id} · {r.name}</b>{r.text}</span>
+                </button>
               ))}
             </div>
-            <h3>独特建筑 · 初次游玩组合</h3>
+            <h3>独特建筑 · 全部 30 种</h3>
             <p>
-              采用官方推荐的 14
-              种独特建筑；中文名称为本项目译名。能力文本已整理，仍待与实体卡面逐张核对。
+              每局从 30 种独特建筑中随机选 14 种，和 54 张普通建筑混合。
+              以下是完整独特建筑速查；中文名称为本项目译名，点击卡面可放大阅读。
             </p>
             <div className="reference-roles">
               {cardCatalog
                 .filter((c) => c.color === "unique")
                 .map((c) => (
-                  <p key={c.key}>
-                    <b>
-                      {c.name} · {c.cost} 金币　
-                    </b>
-                    {c.text}
-                  </p>
+                  <District key={c.key} card={{...c,id:c.key}} />
                 ))}
             </div>
             <h3>保存与重连</h3>
@@ -1145,8 +1140,8 @@ export default function Home() {
               房间状态自动保存在服务器。刷新当前标签页会恢复席位；跨设备或关闭标签页前，请从“恢复密钥”保存你的私人密钥。邀请链接可分享，恢复密钥只属于你。
             </p>
             <p>
-              当前实现基础 8 角色及艺术家，未包含其余 18
-              个替换角色。没有单人机器人；朋友可开语音一起玩。
+              当前实现基础 8 角色、艺术家及全部 30 种独特建筑，未包含其余 18
+              个替换角色。新手教学可单人练习，正式房间需要 2–8 人。
             </p>
             <a
               href="https://cdn.svc.asmodee.net/production-zman/uploads/2024/10/zc01-rulebook_web.pdf"

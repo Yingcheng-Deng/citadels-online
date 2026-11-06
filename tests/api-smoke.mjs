@@ -17,7 +17,7 @@ async function read(code, token) {
   });
   return { status: r.status, ...(await r.json()) };
 }
-for (const n of [2, 3]) {
+for (const n of [2, 3, 4, 5, 6, 7, 8]) {
   const host = await post({ type: "create", name: "测试房主" });
   assert.equal(host.status, 200, JSON.stringify(host));
   const code = host.state.code;
@@ -58,6 +58,10 @@ for (const n of [2, 3]) {
     seats[0].token,
   );
   assert.equal(r.status, 200);
+  assert.equal(r.state.uniqueKeys.length, 14);
+  assert.equal(new Set(r.state.uniqueKeys).size, 14);
+  assert.equal(r.state.remaining + r.state.players.reduce((sum,p)=>sum+p.handCount,0),68);
+  assert.equal(r.state.target,n<=3?8:7);
   assert.equal((await read(code, "wrong-token")).status, 400);
   assert.equal(
     (await post({ type: "join", code, name: "迟到者" })).status,
@@ -79,7 +83,7 @@ for (const n of [2, 3]) {
     const other = seats.find((x) => x.id !== s.id);
     const hidden = await read(code, other.token);
     assert.deepEqual(hidden.state.draftSlots, []);
-    assert.ok(!JSON.stringify(hidden).includes(s.token));
+  assert.ok(!JSON.stringify(hidden).includes(s.token));
     assert.equal(
       hidden.state.players.find((p) => p.id === s.id).hand.length,
       0,
@@ -118,7 +122,42 @@ for (const n of [2, 3]) {
   assert.equal(denied.status, 400);
   const unchanged = await read(code, s.token);
   assert.equal(unchanged.revision, r.revision);
+  // Complete a real HTTP game for every group size, using only each player's private view.
+  let actions = 0;
+  while (r.state.phase !== "finished" && actions++ < 4000) {
+    const seat = seats.find((seat) => seat.id === r.state.active);
+    const current = await read(code, seat.token);
+    const v = current.state;
+    const player = v.players.find((p) => p.id === seat.id);
+    let action;
+    if (v.phase === "draft") {
+      action = v.theaterPending ? {type:"skipTheater"} : {type:v.discardPending?"discardRole":"pick",slot:v.draftSlots[0]};
+    } else if (v.turn.choices.length) {
+      action = {type:"chooseCard",card:v.turn.choices[0].id};
+    } else if (!v.turn.gathered) {
+      const useful = player.hand.some((c)=>c.key!=="secretvault" && (c.key!=="monument" || player.city.length<5) && !player.city.some((x)=>x.key===c.key));
+      action = {type:useful && player.gold<12?"gold":"cards"};
+    } else if ([4,5,6,8].includes(v.role) && !v.turn.used.includes("tax")) {
+      action = {type:"tax"};
+    } else if ([6,7].includes(v.role) && !v.turn.used.includes("bonus")) {
+      action = {type:"bonus"};
+    } else {
+      const district = player.hand.find((c)=>c.key!=="secretvault" && (c.key!=="monument" || player.city.length<5) && c.cost<=player.gold && !player.city.some((x)=>x.key===c.key) && (c.key==="stables" || v.turn.built<(v.role===7?3:1)));
+      action = district ? {type:"build",card:district.id} : {type:"end"};
+    }
+    r = await post({code, revision:current.revision, action}, seat.token);
+    assert.equal(r.status,200,JSON.stringify({n,action,error:r.error}));
+    assert.ok(r.state.players.every((p)=>p.gold>=0));
+  }
+  assert.equal(r.state.phase,"finished",`${n}-player game exceeded action limit`);
+  assert.equal(r.state.scores.length,n);
+  assert.ok(r.state.firstComplete);
+  const scores = (await read(code,seats[0].token)).state.scores;
+  assert.deepEqual(scores,r.state.scores);
+  const replay = await post({code,revision:r.revision,action:{type:"rematch"}},seats[0].token);
+  assert.equal(replay.status,200); assert.equal(replay.state.phase,"lobby");
+  assert.ok(replay.state.players.every((p)=>!p.ready));
   console.log(
-    `${n}-player API: joins, concurrent CAS, private drafts, authentication, reconnect, rejected actions PASS`,
+    `${n}-player API: full game (${actions} actions), scoring, rematch, random deck, private drafts, concurrent CAS and reconnect PASS`,
   );
 }

@@ -632,8 +632,8 @@ footer {
 }
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
-  gap: 13px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 20px;
 }
 .district {
   --card: #728461;
@@ -683,23 +683,23 @@ footer {
   margin: 7px -3px 6px;
 }
 .district h4 {
-  font-size: 15px;
+  font-size: 22px;
   margin: 3px 0 7px;
 }
 .district p {
-  font-size: 10px;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.85;
   margin-bottom: 12px;
   flex: 1;
 }
 .district button {
   width: 100%;
-  font-size: 10px;
-  padding: 7px 3px;
+  font-size: 14px;
+  padding: 10px 8px;
   margin-top: 6px;
 }
 .card-select {
-  font-size: 9px;
+  font-size: 13px;
   margin: 2px 0;
   display: flex;
   align-items: center;
@@ -731,8 +731,8 @@ footer {
 }
 .city-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
 }
 .city-cards .district-art {
   height: 35px;
@@ -1111,7 +1111,90 @@ th {
   button {
     min-height: 38px;
   }
-  .card-select {
-    font-size: 8px;
-  }
+  .card-select { font-size: 13px; }
+}
+
+/* Illustrated cards and readable teaching surfaces. */
+.scene { height: auto; aspect-ratio: 3 / 2; border-radius: 12px; border: 1px solid #b69b65; box-shadow: 0 16px 40px #6a482521; }
+.cover-art { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scene-label { top: auto; bottom: 0; left: 0; width: 100%; padding: 32px 20px 16px; background: linear-gradient(transparent,#251e13bd); color: #fff9e9; font-size: 13px; }
+.learn-entry { margin-top: 20px; width: 100%; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; background: #eadcbd; border-color: #ccb789; padding: 17px; }
+.learn-entry span { color: #79633d; }
+.deck-explainer { padding: 15px; border-radius: 8px; background: #f2ead7; }
+.card-top, .card-top b { font-size: 14px; }
+.district { padding: 15px; border-radius: 10px; box-shadow: 0 6px 16px #2a39270a; }
+.district .card-preview { border: 0; padding: 0; margin: 12px 0; background: transparent; position: relative; overflow: hidden; border-radius: 12px; }
+.district .card-preview:hover { background: transparent; }
+.district-face { width: 100%; height: auto; display: block; aspect-ratio: 600 / 941; object-fit: contain; border-radius: 12px; }
+.card-preview > span { position: absolute; right: 8px; bottom: 8px; background: #211b16e8; color: white; padding: 4px 9px; border-radius: 5px; font-size: 12px; }
+.museum-count { background: #eee4f3; padding: 7px; border-radius: 5px; }
+.role-chips .role-chip { margin-top: 5px; padding: 4px 7px; border: 1px solid #c7b58d; background: #f4ebd4; font-size: 12px; min-height: 0; }
+.draft-card, .practice-back { background: #25354b url('/cards/character-back.webp') center / cover no-repeat; border: 2px solid #8a9cbb; min-height: 250px; justify-content: flex-end; padding: 14px; }
+.draft-card b { margin-top: 0; background: #17243fe8; color: #fff6d4; padding: 9px 18px; border-radius: 6px; font-size: 14px; }
+.active-role { display: flex; gap: 20px; align-items: center; margin-bottom: 20px; }
+.active-role button { flex: 0 0 90px; padding: 0; background: transparent; border: 0; }
+.active-role img { display: block; width: 90px; border-radius: 8px; }
+.active-role h3 { margin-bottom: 6px; }
+.active-role p { font-size: 16px; margin: 0; }
+.turn-guide { padding: 15px 18px; background: #eee5cd; border-left: 3px solid #b39457; margin-bottom: 18px; border-radius: 5px; }
+.turn-guide b, .turn-guide span { display: block; }
+.turn-guide span { margin-top: 6px; font-size: 13px; color: #6a6a51; }
+.theater-actions > div { margin-bottom: 20px; }
+.game-dialog { border: 1px solid #cbb68a; border-radius: 16px; color: var(--ink); background: #fffcf3; width: min(820px, calc(100vw - 28px)); max-height: calc(100dvh - 32px); padding: 0; box-shadow: 0 25px 100px #111b1b66; }
+.game-dialog::backdrop { background: #10271ec9; backdrop-filter: blur(4px); }
+.dialog-inner { padding: 38px; position: relative; }
+.game-dialog h2 { font-size: 30px; margin: 10px 35px 22px 0; }
+.game-dialog p { font-size: 17px; line-height: 1.9; color: #4b594c; }
+.game-dialog button { font-size: 15px; }
+.game-dialog .close { position: absolute; top: 10px; right: 12px; font-size: 27px; width: 38px; min-height: 38px; margin: 0; padding: 0; }
+.card-dialog { width: min(1040px, calc(100vw - 28px)); }
+.card-dialog .dialog-inner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .9fr); gap: 32px; align-items: center; }
+.card-dialog img { width: 100%; max-height: 78dvh; object-fit: contain; border-radius: 12px; }
+.card-dialog p { font-size: 20px; line-height: 2; }
+.catalog-dialog { width: min(1180px, calc(100vw - 28px)); }
+.tutorial-progress { display: flex; gap: 6px; margin: 12px 0 25px; }
+.tutorial-progress span { height: 5px; flex: 1; border-radius: 4px; background: #e3dece; }
+.tutorial-progress .done { background: #9d7a35; }
+.practice-status { display: flex; flex-wrap: wrap; gap: 16px; padding: 12px 15px; background: #eee8d6; border-radius: 7px; margin-bottom: 20px; }
+.lesson-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.lesson-grid > div { background: #f0ebdf; padding: 15px; border-radius: 8px; }
+.lesson-grid p { font-size: 14px; margin: 7px 0 0; }
+.game-dialog .lesson-note { padding: 16px; background: #eee9d9; border-radius: 8px; font-size: 15px; margin-top: 20px; }
+.practice-cards { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
+.practice-back { width: 125px; min-height: 185px; color: #fff9df; font-size: 28px !important; text-shadow: 0 2px 5px #000; }
+.practice-building { background: #e3eaf0; border: 2px solid #809db4; border-radius: 10px; padding: 22px; margin: 20px 0; }
+.practice-building span { color: #536f86; }
+.practice-building h3 { font-size: 27px; margin: 8px 0; }
+.lesson-answers { display: grid; gap: 10px; }
+.game-dialog .lesson-feedback { padding: 15px 18px; margin: 20px 0; background: #e2eddf; border-left: 4px solid #6f9362; }
+.tutorial-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 28px; border-top: 1px solid #ded7c5; padding-top: 20px; }
+.tutorial-footer span { color: #8a805e; font-size: 13px; }
+.reference-roles .district { margin-bottom: 15px; }
+.reference-role { display: flex; text-align: left; gap: 15px; align-items: center; width: 100%; margin: 10px 0; }
+.reference-role img { width: 75px; border-radius: 7px; }
+.reference-role span { font-size: 15px; }
+.reference-role b { display: block; margin-bottom: 6px; }
+@media (max-width: 800px) {
+  nav { gap: 16px; }
+  .card-dialog .dialog-inner { grid-template-columns: 1fr; gap: 20px; }
+  .card-dialog img { max-height: 55dvh; }
+  .game-dialog .dialog-inner { padding: 35px 22px 24px; }
+  .game-dialog h2 { font-size: 25px; }
+  .card-dialog p { font-size: 18px; }
+  .cards, .city-cards { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .lesson-grid { grid-template-columns: 1fr; }
+  .practice-back { min-height: 150px; }
+  .card-select { font-size: 13px; }
+}
+@media (max-width: 520px) {
+  .cards, .city-cards { grid-template-columns: minmax(0, 1fr); }
+  .district-face { max-height: 400px; }
+  .city { padding: 12px; }
+  .district h4 { font-size: 23px; }
+  .district p { font-size: 17px; }
+  .room-controls { gap: 12px 16px; }
+  .draft-card { min-height: 225px; }
+  .draft-card b { padding: 7px 10px; }
+  .game-dialog p { font-size: 16px; }
+  .tutorial-footer { flex-wrap: wrap; }
 }
