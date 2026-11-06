@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { GameDialog } from "../components/game-dialog";
+import { AdvancedControls } from "../components/advanced-controls";
 import { Tutorial } from "../components/tutorial";
 import {
-  roles,
+  roles, roleAt, buildLimit, freeOfLimit, taxColor,
   cardCatalog,
   type GameView,
   type Card,
@@ -54,6 +55,9 @@ function District({
   );
 }
 export default function Home() {
+  const [mode,setMode] = useState<"classic"|"advanced">("classic");
+  const [confirmBuild,setConfirmBuild] = useState(true);
+  const [cardinalTarget,setCardinalTarget] = useState("");
   const [tutorial, setTutorial] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [roleInfo, setRoleInfo] = useState<number | null>(null);
@@ -106,6 +110,7 @@ export default function Home() {
   }
   useEffect(() => {
     try {
+      setConfirmBuild(localStorage.getItem("citadels-confirm-build") !== "off");
       if (!localStorage.getItem("citadels-tutorial-seen") && !sessionStorage.getItem("citadels-seat")) setTutorial(true);
     } catch {}
     const room = new URLSearchParams(location.search).get("room");
@@ -174,7 +179,7 @@ export default function Home() {
       const res = await fetch("/api/room", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, name, code: code.trim().toUpperCase() }),
+        body: JSON.stringify({ type, name, mode, code: code.trim().toUpperCase() }),
       });
       const data = (await res.json()) as {
         state: GameView;
@@ -244,7 +249,18 @@ export default function Home() {
     mine = state?.active === state?.me,
     t = state?.turn;
   const can = (key: string) =>
-    !!t && !t.used.includes(key) && !t.choices.length;
+    !!t && !state?.restricted && !t.used.includes(key) && !t.choices.length;
+  const currentRole = state ? roleAt(state,state.role) : undefined;
+  const rid = currentRole?.id || 0;
+  function requestBuild(action:Action, card:Card) {
+    if (!me) return;
+    const cost = action.sacrifice ? 0 : Math.max(0,card.cost-(card.color === "unique" && me.city.some(c=>c.key === "factory")?1:0));
+    const paid = action.target ? cost : cost-(action.cards?.length || 0);
+    if (paid < 0) { setError("抵扣数量超过造价"); return; }
+    if (!action.target && me.gold < paid) { setError("金币不足，无法建造"); return; }
+    if (confirmBuild) setConfirmation({title:`确认建造${card.name}？支付 ${paid} 金币${action.cards?.length ? `，交出 ${action.cards.length} 张手牌` : ""}${action.sacrifice ? "，并拆除所选建筑" : ""}${state?.cast.includes(27) && rid!==27 ? "；建造后若还有金币，另缴 1 金币房产税" : ""}`,action});
+    else act(action);
+  }
   return (
     <>
       <div className="paper-noise" />
@@ -375,6 +391,7 @@ export default function Home() {
                   />
                 </label>
               )}
+              {tab === "create" && <fieldset className="mode-picker"><legend>选择玩法</legend><label><input type="radio" name="mode" value="classic" checked={mode==="classic"} onChange={()=>setMode("classic")}/>经典模式<span>基础 8 角色；3／8 人局加入艺术家。</span></label><label><input type="radio" name="mode" value="advanced" checked={mode==="advanced"} onChange={()=>setMode("advanced")}/>进阶模式<span>27 角色池，按编号各选一个组成当局阵容。</span></label></fieldset>}
               <button className="primary full" disabled={busy}>
                 {busy
                   ? "正在入席…"
@@ -398,7 +415,7 @@ export default function Home() {
               </div>
             </div>
             <div className="version-note">
-              基础角色 + 艺术家 · 每局从 30 种独特建筑随机选 14 种
+              经典 / 进阶 · 27 角色 · 每局从 30 种独特建筑随机选 14 种
               <br />
               基于新版规则的非官方朋友联机项目
             </div>
@@ -425,7 +442,7 @@ export default function Home() {
                     ? "这一城，写下了结局。"
                     : state.phase === "draft"
                       ? "你的身份，你的秘密。"
-                      : `${roles[state.role - 1]?.name}的时刻。`}
+                      : `${currentRole?.name || "角色交涉"}的时刻。`}
               </h1>
             </div>
             <div className="room-controls">
@@ -487,8 +504,8 @@ export default function Home() {
                       </small>
                       <span className="role-chips">
                         {p.roles.map((r) => (
-                          <button className="role-chip" key={r} onClick={() => setRoleInfo(r)} title="查看角色卡和能力">
-                            {r} {roles[r - 1].name}
+                          <button className="role-chip" key={r} onClick={() => setRoleInfo(roleAt(state,r).id)} title="查看角色卡和能力">
+                            {r} {roleAt(state,r).name}
                             {!p.revealed.includes(r) &&
                             state.phase !== "finished"
                               ? " · 暗"
@@ -509,6 +526,11 @@ export default function Home() {
                   </p>
                   <p className="deck-explainer">本局开局时，从 30 种独特建筑随机选 14 种（包含不同造价），混入 54 张普通建筑；再次开局会重新抽选。</p>
                   <button onClick={() => setTutorial(true)}>第一次玩？先练习一回合</button>
+                  <div className="mode-settings"><h3>{state.mode === "classic" ? "经典模式" : "进阶模式"}</h3>
+                    {state.host===state.me && <label>房间模式<select value={state.mode} disabled={busy} onChange={e=>act({type:"configure",mode:e.target.value as "classic"|"advanced",cast:state.castChoices})}><option value="classic">经典模式</option><option value="advanced">进阶模式</option></select></label>}
+                    {state.mode==="advanced" && <><p>每个编号只选一位，阵容整局固定。可自行选择或保持随机；2 人用 1–8 号，其余人数使用 1–9 号。皇帝至少 3 人，王后至少 5 人。</p><div className="cast-settings">{Array.from({length:9},(_,i)=>i+1).map(rank=><label key={rank}>{rank} 号角色<select value={state.castChoices[rank-1] || 0} disabled={busy || state.host!==state.me} onChange={e=>{const cast=Array.from({length:9},(_,i)=>state.castChoices[i] || 0);cast[rank-1]=Number(e.target.value);act({type:"configure",mode:"advanced",cast});}}><option value={0}>开局随机</option>{roles.filter(r=>r.rank===rank).map(r=><option key={r.id} value={r.id}>{r.name}{r.id===16 ? "（≥3人）" : r.id===26 ? "（≥5人）" : ""}</option>)}</select></label>)}</div></>}
+                    {state.mode==="classic" && <p>基础 8 角色；仅 3／8 人局自动加入艺术家。切换设置后大家需要重新准备。</p>}
+                  </div>
                   <div className="lobby-specs">
                     <span>
                       <b>{state.players.length}</b> / 8 位入席
@@ -549,7 +571,7 @@ export default function Home() {
                     </button>
                   </div>
                   <p className="muted">
-                    三人及八人局自动加入 9 号艺术家。初始王冠随机分配。
+                    经典模式三人及八人局加入艺术家；进阶模式按阵容开局。初始王冠随机分配。
                   </p>
                 </section>
               ) : (
@@ -562,7 +584,7 @@ export default function Home() {
                             ? state.theaterPending
                               ? "剧院：交换一个身份？"
                               : state.discardPending
-                              ? "秘密弃掉一个角色"
+                              ? state.initialDiscard ? "首位玩家：先暗弃一张角色牌" : "秘密弃掉一个角色"
                               : "盲选你的角色"
                             : `等待 ${state.players.find((p) => p.id === state.active)?.name} ${state.theaterPending ? "使用剧院" : "选角"}`}
                         </h2>
@@ -577,7 +599,7 @@ export default function Home() {
                           ? state.theaterPending
                             ? "所有人已选好身份。你可以交换自己的一个角色，或跳过；对方身份在交换前不可见。"
                             : state.discardPending
-                            ? "选择一张牌背暗弃；不会显示身份，也不会传给下一位玩家。"
+                            ? state.initialDiscard ? "本轮先由你亲手选择一张牌背暗弃，再从剩余七张中盲选第一个身份。" : "选择一张牌背暗弃；不会显示身份，也不会传给下一位玩家。"
                             : "角色牌已洗牌，选牌前不显示身份。点击一张牌背，选中后仅你可见。"
                           : "这一刻，最好的策略是让朋友猜不透你。"}
                       </p>
@@ -585,12 +607,12 @@ export default function Home() {
                         <p>
                           公开弃置：
                           {state.faceup
-                            .map((r) => roles[r - 1].name)
+                            .map((r) => roleAt(state,r).name)
                             .join("、")}
                         </p>
                       )}
                       {state.theaterPending && mine ? <div className="theater-actions">
-                        {me?.roles.map((role) => <div key={role}><h3>交出：{roles[role - 1].name}</h3><div className="button-row">
+                        {me?.roles.map((role) => <div key={role}><h3>交出：{roleAt(state,role).name}</h3><div className="button-row">
                           {state.players.filter((p) => p.id !== state.me).map((p) => <button key={p.id} disabled={busy} onClick={() => act({type:"theater",role,target:p.id})}>与 {p.name} 交换</button>)}
                         </div></div>)}
                         <button disabled={busy} onClick={() => act({type:"skipTheater"})}>保留身份，跳过剧院</button>
@@ -643,9 +665,10 @@ export default function Home() {
                           ♛ 已有城市完工，本轮结束后结算。
                         </div>
                       )}
+                      <AdvancedControls key={`${state.round}-${state.role}-${state.active}`} state={state} busy={busy} act={act} build={requestBuild} cardinalTarget={cardinalTarget} setCardinalTarget={setCardinalTarget}/>
                       {mine && t ? (
                         <>
-                          <div className="active-role"><button onClick={() => setRoleInfo(state.role)} aria-label="放大当前角色卡"><img src={`/cards/role-${state.role}.webp`} alt={roles[state.role - 1]?.name} /></button><div><h3>{roles[state.role - 1]?.name}</h3><p>{roles[state.role - 1]?.text}</p></div></div>
+                          <div className="active-role"><button onClick={() => setRoleInfo(rid)} aria-label="放大当前角色卡"><img src={`/cards/role-${rid}.webp`} alt={currentRole?.name} /></button><div><h3>{currentRole?.name}</h3><p>{currentRole?.text}</p></div></div>
                           <div className="turn-guide"><b>{t.choices.length ? "下一步：从抽到的牌中选择一张保留" : !t.gathered ? "下一步：采集金币或抽建筑牌" : "下一步：建造、使用能力，完成后结束回合"}</b><span>普通角色建 1 座，建筑师建 3 座；马厩不占次数。能力可按卡面时机使用。</span></div>
                           {t.choices.length ? (
                             <>
@@ -681,26 +704,26 @@ export default function Home() {
                                 >
                                   ▱ 抽 {me?.city.some((c) => c.key === "observatory") ? 3 : 2} 张建筑牌{me?.city.some((c) => c.key === "library") ? "，全部保留" : "，保留 1 张"}
                                 </button>
-                                {[4, 5, 6, 8].includes(state.role) && (
+                                {!!taxColor(rid) && rid!==18 && (
                                   <button
                                     disabled={busy || !can("tax")}
                                     onClick={() => act({ type: "tax" })}
                                   >
-                                    收取建筑税
+                                    {rid===17 || rid===19 ? "按建筑领取牌" : "按当前城市收税（可先建造再收）"}
                                   </button>
                                 )}
-                                {[6, 7].includes(state.role) && (
+                                {[6, 7].includes(rid) && (
                                   <button
                                     disabled={busy || !can("bonus")}
                                     onClick={() => act({ type: "bonus" })}
                                   >
-                                    {state.role === 6
+                                    {rid === 6
                                       ? "商人：额外 1 金币"
                                       : "建筑师：额外 2 张牌"}
                                   </button>
                                 )}
                               </div>
-                              {[1, 2].includes(state.role) && (
+                              {[1, 2].includes(rid) && (
                                 <div className="power">
                                   <h3>
                                     {state.role === 1
@@ -708,14 +731,13 @@ export default function Home() {
                                       : "选择盗窃的角色"}
                                   </h3>
                                   <div className="button-row">
-                                    {roles
-                                      .slice(0, state.roleCount)
+                                    {state.cast.map((_,i)=>({...roleAt(state,i+1),id:i+1}))
                                       .filter(
                                         (r) =>
                                           r.id !== state.role &&
                                           (state.role !== 2 ||
                                             (r.id !== 1 &&
-                                              r.id !== state.killed)),
+                                              r.id !== state.killed && r.id !== state.bewitched)),
                                       )
                                       .map((r) => (
                                         <button
@@ -737,7 +759,7 @@ export default function Home() {
                                   </div>
                                 </div>
                               )}
-                              {state.role === 3 && (
+                              {rid === 3 && (
                                 <div className="power">
                                   <h3>交换手牌 · 两种方式任选一种</h3>
                                   <div className="button-row">
@@ -781,7 +803,7 @@ export default function Home() {
                               )}
                               <div className="end-turn">
                                 <span>
-                                  已建造 {t.built} / {state.role === 7 ? 3 : 1}{" "}
+                                  已建造 {t.built} / {buildLimit(rid)}{" "}
                                   座 ·{" "}
                                   {t.gathered
                                     ? "已采集资源"
@@ -804,7 +826,7 @@ export default function Home() {
                                   </div>
                                 ) : (
                                   <button
-                                    disabled={busy || !t.gathered}
+                                    disabled={busy || !t.gathered || !!state.restricted}
                                     onClick={() => setConfirmEnd(true)}
                                   >
                                     结束回合 →
@@ -904,20 +926,21 @@ export default function Home() {
                                 <button
                                   disabled={
                                     busy ||
-                                    !t.gathered ||
-                                    (c.key !== "stables" && t.built >= (state.role === 7 ? 3 : 1)) ||
+                                    !t.gathered || !!state.restricted || rid===22 ||
+                                    (!freeOfLimit(rid,c) && t.built >= buildLimit(rid)) ||
                                     c.key === "secretvault" ||
                                     (c.key === "monument" && me.city.length >= 5)
                                   }
                                   onClick={() =>
-                                    act({
+                                    requestBuild({
                                       type: "build",
+                                      target: rid===19 ? cardinalTarget || undefined : undefined,
                                       card: c.id,
                                       cards:
-                                        c.key === "den"
+                                        c.key === "den" || (rid===19 && !!cardinalTarget)
                                           ? selected.filter((x) => x !== c.id)
                                           : [],
-                                    })
+                                    },c)
                                   }
                                 >
                                   {c.key === "secretvault" ? "留在手中 · 终局 +3 分" : "建造"}
@@ -925,7 +948,7 @@ export default function Home() {
                                     ? "（勾选牌抵扣）"
                                     : ""}
                                 </button>
-                                {c.key !== "secretvault" && me.city.some((x) => x.key === "framework" || c.key === "necropolis") && <button disabled={busy || !t.gathered || (c.key !== "stables" && t.built >= (state.role === 7 ? 3 : 1))} onClick={() => setFreeBuild(c)}>拆除建筑，免费建造…</button>}
+                                {c.key !== "secretvault" && me.city.some((x) => x.key === "framework" || c.key === "necropolis") && <button disabled={busy || !t.gathered || !!state.restricted || rid===22 || (!freeOfLimit(rid,c) && t.built >= buildLimit(rid))} onClick={() => setFreeBuild(c)}>拆除建筑，免费建造…</button>}
                                 {me.city.some((x) => x.key === "museum") && <button disabled={busy || !can("museum")} onClick={() => act({type:"museum",card:c.id})}>博物馆：收藏此牌</button>}
                                 {me.city.some(
                                   (x) => x.key === "laboratory",
@@ -956,7 +979,7 @@ export default function Home() {
                           {p.name}{" "}
                           <small>
                             {p.city.length} 张建筑 · 完城进度 {p.cityCount}/{state.target}{" "}
-                            {p.revealed.includes(5) && state.killed !== 5
+                            {roleAt(state,5).id===5 && state.killed!==5 && (state.bewitched===5 ? p.revealed.includes(1) : p.revealed.includes(5))
                               ? "· 主教守护"
                               : ""}
                           </small>
@@ -971,15 +994,14 @@ export default function Home() {
                               <District key={c.id} card={c}>
                                 {mine &&
                                   state.phase === "turn" &&
-                                  state.role === 8 && (
+                                  rid === 8 && (
                                     <button
                                       disabled={
                                         busy ||
                                         !can("power") ||
                                         p.cityCount >= state.target ||
                                         c.key === "keep" ||
-                                        (p.revealed.includes(5) &&
-                                          state.killed !== 5)
+                                        (roleAt(state,5).id===5 && state.killed!==5 && (state.bewitched===5 ? p.revealed.includes(1) : p.revealed.includes(5)))
                                       }
                                       onClick={() =>
                                         act({
@@ -997,15 +1019,15 @@ export default function Home() {
                                       金币
                                     </button>
                                   )}
-                                {mine && state.phase === "turn" && me?.city.some((x) => x.key === "armory") && !(p.id === state.me && c.key === "armory") && <button disabled={busy || !t || !!t.choices.length || p.cityCount >= state.target} onClick={() => setConfirmation({title:`拆除自己的军械库，同时拆除 ${p.name} 的${c.name}？`,action:{type:"armory",target:p.id,card:c.id}})}>军械库：同时拆除此建筑</button>}
+                                {mine && state.phase === "turn" && me?.city.some((x) => x.key === "armory") && !(p.id === state.me && c.key === "armory") && <button disabled={busy || !!state.restricted || !t || !!t.choices.length || p.cityCount >= state.target} onClick={() => setConfirmation({title:`拆除自己的军械库，同时拆除 ${p.name} 的${c.name}？`,action:{type:"armory",target:p.id,card:c.id}})}>军械库：同时拆除此建筑</button>}
                                 {mine &&
                                   state.phase === "turn" &&
-                                  state.role === 9 &&
+                                  rid === 9 &&
                                   p.id === state.me && (
                                     <button
                                       disabled={
                                         busy ||
-                                        c.decorated ||
+                                        !!state.restricted || c.decorated ||
                                         !t ||
                                         t.decorated.length >= 2 ||
                                         !me?.gold
@@ -1028,6 +1050,9 @@ export default function Home() {
               )}
             </section>
             <aside className="sidebar">
+              <section className="table-note operation-settings"><h3>操作设置</h3><label><input type="checkbox" role="switch" checked={confirmBuild} onChange={e=>{setConfirmBuild(e.target.checked);try{localStorage.setItem("citadels-confirm-build",e.target.checked?"on":"off");}catch{}}}/>建造前再次确认</label><p>默认开启，只影响你当前设备。确认窗口显示金币和手牌费用；取消不会扣资源。</p></section>
+              {state.phase!=="lobby" && <section className="table-note"><h3>{state.mode==="classic"?"经典":"进阶"} · 本局角色阵容</h3><div className="cast-list">{state.cast.map((_,i)=><button key={i} onClick={()=>setRoleInfo(roleAt(state,i+1).id)}>{i+1} · {roleAt(state,i+1).name}</button>)}</div>{state.cast.includes(27) && <p>房产税池：{state.taxPool} 金币</p>}{state.bewitched>0 && <p>巫术目标：{roleAt(state,state.bewitched).name}</p>}{state.warrants && <p>逮捕令：{state.warrants.marked.map(r=>roleAt(state,r).name).join("、")}{state.warrants.signed>0 ? `；你的真令：${roleAt(state,state.warrants.signed).name}` : "（真假隐藏）"}</p>}{state.threats && <p>威胁：{state.threats.marked.map(r=>roleAt(state,r).name).join("、")}</p>}</section>}
+
               <section className="journal">
                 <div className="section-heading">
                   <h3>城中纪事</h3>
@@ -1068,11 +1093,11 @@ export default function Home() {
       </GameDialog>}
       {roleInfo !== null && <GameDialog title="角色卡详情" onClose={() => setRoleInfo(null)} className="card-dialog">
         <img src={`/cards/role-${roleInfo}.webp`} alt={`${roles[roleInfo - 1].name}原版角色卡`} />
-        <div><div className="eyebrow">角色 {roleInfo} · {roles[roleInfo - 1].en}</div><h2>{roles[roleInfo - 1].name}</h2><p>{roles[roleInfo - 1].text}</p><p>角色按编号从小到大行动。每项能力每个角色回合限用一次；结束后要等下一轮重新选角。</p></div>
+        <div><div className="eyebrow">角色 {roles[roleInfo - 1].rank} · {roles[roleInfo - 1].en}</div><h2>{roles[roleInfo - 1].name}</h2><p>{roles[roleInfo - 1].text}</p><p>角色按编号从小到大行动。每项能力每个角色回合限用一次；结束后要等下一轮重新选角。</p></div>
       </GameDialog>}
       {freeBuild && <GameDialog title="免费建造" onClose={() => setFreeBuild(null)}>
         <h2>免费建造{freeBuild.name}</h2><p>选择一座自己的建筑拆除，代替支付金币。被拆建筑和博物馆藏牌会回到牌库底。</p>
-        <div className="button-row">{me?.city.filter((c) => c.key === "framework" || freeBuild.key === "necropolis").map((c) => <button key={c.id} disabled={busy} onClick={() => { setConfirmation({title:`拆除${c.name}，免费建造${freeBuild.name}？`,action:{type:"build",card:freeBuild.id,sacrifice:c.id}}); setFreeBuild(null); }}>拆除{c.name}</button>)}</div>
+        <div className="button-row">{me?.city.filter((c) => c.key === "framework" || freeBuild.key === "necropolis").map((c) => <button key={c.id} disabled={busy} onClick={() => { requestBuild({type:"build",card:freeBuild.id,sacrifice:c.id},freeBuild); setFreeBuild(null); }}>拆除{c.name}</button>)}</div>
       </GameDialog>}
       {confirmation && <GameDialog title="确认建筑操作" onClose={() => setConfirmation(null)}><h2>{confirmation.title}</h2><div className="button-row"><button className="primary" disabled={busy} onClick={() => { act(confirmation.action); setConfirmation(null); }}>确认操作</button><button onClick={() => setConfirmation(null)}>取消</button></div></GameDialog>}
       {help && (
@@ -1104,9 +1129,10 @@ export default function Home() {
             <h3>2–3 人，两个身份，一座城市</h3>
             <p>
               2 人使用 8
-              角色：王冠先选，第二人选并弃，第一人再选并弃，第二人最后选。3
-              人加入艺术家：每人先选一次，系统随机暗弃一张，再每人选一次。两个角色共用城市、手牌和金币，分别行动；每个角色回合的能力与建造额度重新计算。
+              角色：王冠持有者先亲手暗弃一张，再选第一个身份；第二人选并弃，第一人再选并弃，第二人最后选。3
+              人使用九角色：每人先选一次，系统随机暗弃一张，再每人选一次。两个角色共用城市、手牌和金币，分别行动；每个角色回合的能力与建造额度重新计算。
             </p>
+            <h3>收税时机</h3><p>未注明特定时机的角色能力，每回合可在自己的回合内使用一次。可以先建造再收税，计算使用能力时的当前城市；收税后再建造则不能再次收税。女巫、勒索等有指定时机的能力按提示处理。</p>
             <h3>何时分出胜负？</h3>
             <p>
               2–3 人达到 8 座建筑；4–8 人达到 7
@@ -1119,7 +1145,7 @@ export default function Home() {
               {roles.map((r) => (
                 <button className="reference-role" key={r.id} onClick={() => setRoleInfo(r.id)}>
                   <img src={`/cards/role-${r.id}.webp`} alt={`${r.name}原版角色卡`} loading="lazy" />
-                  <span><b>{r.id} · {r.name}</b>{r.text}</span>
+                  <span><b>{r.rank} · {r.name}</b>{r.text}</span>
                 </button>
               ))}
             </div>
@@ -1140,8 +1166,7 @@ export default function Home() {
               房间状态自动保存在服务器。刷新当前标签页会恢复席位；跨设备或关闭标签页前，请从“恢复密钥”保存你的私人密钥。邀请链接可分享，恢复密钥只属于你。
             </p>
             <p>
-              当前实现基础 8 角色、艺术家及全部 30 种独特建筑，未包含其余 18
-              个替换角色。新手教学可单人练习，正式房间需要 2–8 人。
+              已实现全部 27 角色及 30 种独特建筑。经典模式使用基础 8 角色，3／8 人加入艺术家；进阶模式每编号各选一个，二人禁用皇帝、少于五人禁用王后。新手教学可单人练习，正式房间需要 2–8 人。
             </p>
             <a
               href="https://cdn.svc.asmodee.net/production-zman/uploads/2024/10/zc01-rulebook_web.pdf"

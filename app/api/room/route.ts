@@ -76,7 +76,8 @@ export async function POST(request: Request) {
         const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         const bytes = crypto.getRandomValues(new Uint8Array(8));
         const code = Array.from(bytes, (b) => alphabet[b % 32]).join("");
-        const game = newGame(code, p);
+        if (body.mode !== undefined && !["classic", "advanced"].includes(body.mode)) throw new Error("请选择有效模式");
+        const game = newGame(code, p, body.mode || "classic");
         await env
           .DB!.prepare(
             "INSERT INTO rooms (code,state,revision,updated_at) VALUES (?,?,0,?)",

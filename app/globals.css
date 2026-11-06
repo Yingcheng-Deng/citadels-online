@@ -1198,3 +1198,25 @@ th {
   .game-dialog p { font-size: 16px; }
   .tutorial-footer { flex-wrap: wrap; }
 }
+.mode-picker { border: 1px solid #d8d0b9; border-radius: 10px; padding: 14px; margin: 18px 0; }
+.mode-picker label { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 10px 0; cursor: pointer; }
+.mode-picker label span { grid-column: 2; font-size: 13px; font-weight: 400; line-height: 1.6; }
+.mode-picker input, .operation-settings input, .marker-options input { width: auto; margin: 0 8px 0 0; }
+.mode-settings { padding: 20px; margin: 20px 0; background: #f1ecdd; border-radius: 12px; text-align: left; }
+.cast-settings { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap: 12px; }
+.cast-settings label, .advanced-controls label { display: grid; gap: 8px; margin: 12px 0; }
+.cast-settings select, .advanced-controls select, .mode-settings select { width: 100%; min-height: 42px; font-size: 15px; }
+.cast-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.cast-list button { font-size: 13px; padding: 7px 10px; }
+.reaction { background: #f3e5c4; border: 1px solid #b8a06c; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+.reaction button { margin: 6px; }
+.marker-options { display: flex; flex-wrap: wrap; gap: 12px; }
+.marker-options label { display: flex; align-items: center; }
+.inspected-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(190px,1fr)); gap: 14px; }
+.inspected-cards article { background: #fffdf4; padding: 14px; border-radius: 10px; }
+.inspected-cards img { display: block; width: 100%; max-height: 380px; object-fit: contain; }
+.inspected-cards button { margin: 5px 0; }
+.advanced-controls .power { margin-bottom: 18px; }
+.operation-settings { border: 1px solid #c8b98d; }
+.operation-settings label { display: flex; align-items: center; gap: 6px; }
+@media(max-width: 700px) { .game-grid > .sidebar { display: flex; flex-direction: column; } .operation-settings { order: -2; } .inspected-cards { grid-template-columns: 1fr; } }

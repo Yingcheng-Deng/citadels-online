@@ -69,7 +69,7 @@ test("two-player draft has explicit discard after second and third picks", () =>
       slot: 0,
     });
   }
-  assert.deepEqual(seen, [7, 6, 5, 4, 3, 2]);
+  assert.deepEqual(seen, [8, 7, 6, 5, 4, 3, 2]);
   assert.deepEqual(
     g.players.map((p) => p.roles.length),
     [2, 2],
@@ -125,6 +125,7 @@ test("unauthorized player cannot act or see secrets", () => {
 });
 test("blind draft exposes only positions, reveals a picked role only to its owner", () => {
   const g = game();
+  run(g, {type:"discardRole",slot:0});
   const id = g.active;
   const other = g.players.find((p) => p.id !== id)!;
   const before = view(g, id);
@@ -144,6 +145,7 @@ test("blind draft exposes only positions, reveals a picked role only to its owne
 
 test("blind draft rejects role identities and invalid positions without changing state", () => {
   const g = game();
+  run(g, {type:"discardRole",slot:0});
   for (const slot of [undefined, -1, 0.5, NaN, Infinity, g.available.length, "0", null]) {
     const before = JSON.stringify(g);
     assert.throws(() => run(g, { type: "pick", slot: slot as number }), /有效/);
@@ -157,6 +159,7 @@ test("blind draft rejects role identities and invalid positions without changing
 
 test("blind discard removes a position without revealing or assigning its role", () => {
   const g = game();
+  run(g, {type:"discardRole",slot:0});
   run(g, { type: "pick", slot: 0 });
   run(g, { type: "pick", slot: 0 });
   assert.equal(g.discardPending, true);

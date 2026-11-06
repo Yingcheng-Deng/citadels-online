@@ -9,7 +9,7 @@
 - [角色原始图集](https://cdn.steamusercontent.com/ugc/795361804478916811/826A10BB5AF08183189B5165DF6AE632153807D0/)
 - [角色牌背](https://cdn.steamusercontent.com/ugc/795361804476240230/FC628CC58E6EA46FCFC3057C45606672E6D896EF/)
 
-建筑图集 7×7，角色图集 4×7。按 Workshop 卡牌编号映射提取 47 种建筑、9 个当前启用角色，压缩为 600 像素宽 WebP；完整卡面不改画、不移除卡面文字。映射与提取过程见 `scripts/prepare-card-assets.mjs`。大图仅在本地忽略目录保存，部署与 GitHub 只包含网页用逐卡资源。
+建筑图集 7×7，角色图集 4×7。按 Workshop 卡牌编号映射提取 47 种建筑、全部 27 个角色，压缩为 600 像素宽 WebP；完整卡面不改画、不移除卡面文字。映射与提取过程见 `scripts/prepare-card-assets.mjs`。大图仅在本地忽略目录保存，部署与 GitHub 只包含网页用逐卡资源。
 
 卡面美术归各自权利人所有，不适用本仓库 MIT 代码许可。角色原画 Andrew Bosley；建筑原画团队及完整署名见 [官方手册末页](https://cdn.svc.asmodee.net/production-zman/uploads/2024/10/zc01-rulebook_web.pdf)。公开图集来源不表示取得原画版权或出版商授权。本项目为非官方朋友联机项目。
 

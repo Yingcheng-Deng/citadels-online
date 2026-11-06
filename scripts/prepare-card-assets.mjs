@@ -12,7 +12,28 @@ const districts = {
   secretvault:36,smithy:37,stables:38,statue:39,tavern:40,temple:41,theater:42,
   den:43,townhall:44,trading:45,watchtower:46,well:47,
 };
-const roles = {1:4,2:22,3:11,4:10,5:5,6:14,7:2,8:24,9:3};
+// Role IDs are app identities, not ranks. Atlas positions are row-major in a 4×7 grid.
+const roles = {
+  1:4,2:22,3:11,4:10,5:5,6:14,7:2,8:24,9:3,
+  10:25, // Witch
+  11:12, // Magistrate
+  12:20, // Spy
+  13:6,  // Blackmailer
+  14:26, // Wizard
+  15:19, // Seer
+  16:9,  // Emperor
+  17:16, // Patrician
+  18:0,  // Abbot
+  19:7,  // Cardinal
+  20:1,  // Alchemist
+  21:23, // Trader
+  22:15, // Navigator
+  23:18, // Scholar
+  24:8,  // Diplomat
+  25:13, // Marshal
+  26:17, // Queen
+  27:21, // Tax Collector
+};
 await mkdir("public/cards", {recursive:true});
 async function extract(file, columns, rows, mapping, prefix = "") {
   const {width,height} = await sharp(file).metadata();
@@ -26,4 +47,4 @@ async function extract(file, columns, rows, mapping, prefix = "") {
 await extract("outputs/source-art/districts.png",7,7,districts);
 await extract("outputs/source-art/characters.png",4,7,roles,"role-");
 await sharp("outputs/source-art/character-back.png").resize({width:600}).webp({quality:85}).toFile("public/cards/character-back.webp");
-console.log("Prepared 47 district faces, 9 role faces and the role back.");
+console.log("Prepared 47 district faces, 27 role faces and the role back.");
